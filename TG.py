@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
+#不成熟版本，总结都有
 import nltk
 # nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.cluster.util import cosine_distance
 import numpy as np
 import networkx as nx
-
+import os
 
 def read_article(file_name):
     file = open(file_name, "r")
@@ -20,6 +21,18 @@ def read_article(file_name):
     sentences.pop()
 
     return sentences
+
+def conclude_article(filename, data):
+        outputFileName = filename + "TG"
+        dataToStr = '\n'.join(['\n'.join([i for i in j]) for j in data])
+        file = os.open(outputFileName, 'wb')
+        file.write(str(dataToStr))
+        file.close()
+        print('File had been writed Succed!')
+       # outputfile = r'./target.txt'
+       #
+       # return
+        #    conclude_article(outputfile, summarize_text)
 
 
 def sentence_similarity(sent1, sent2, stopwords=None):
@@ -86,6 +99,8 @@ def generate_summary(file_name, top_n=5):
 
     # Step 5 - Offcourse, output the summarize texr
     print("Summarize Text: \n", ". ".join(summarize_text))
-
+    print("lllaaaaaa\n",summarize_text)
+    summ=conclude_article("msft.txt",summarize_text)
+   # print("summ\n",summ)
     # let's begin
 generate_summary("msft.txt", 2)

@@ -119,6 +119,13 @@ class readfile:
         print("conclusion\n",conclusion)
         print("conclusion\n",".".join(conclusion))
 
+class buildfile:
+    def init_txt(self):
+        txt = comtypes.client.CreateObject("txt.Application")
+        txt.Visible = 1
+        return txt
+
+
 
 if __name__ == '__main__':
     #obj = generatesumm()

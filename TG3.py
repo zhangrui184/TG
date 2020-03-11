@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-
+# D:\python project me\TG下多txt输入，多txt输出
 import nltk
 # nltk.download('stopwords')
 from nltk.corpus import stopwords
@@ -99,7 +99,7 @@ class generatesumm:
 
 class readfile:
     def init_txt(self):
-        txt = comtypes.client.CreateObject("txt.Application")
+        txt = comtypes.client.CreateObject("txt.Application","doc.Application","docx.Application")
         txt.Visible = 1
         return txt
 
@@ -108,27 +108,30 @@ class readfile:
         files = os.listdir(folder)
         # 获取word类型的文件放到一个列表里面
         wdfiles = [f for f in files if f.endswith((".doc", ".docx","txt"))]
-        conclusion = []
+        conclusion = []  #文摘的结果
         for wdfile in wdfiles:
          # 将word文件放到指定的路径下面
             # wdPath = os.path.join("D:\python project me\TG", wdfile)
             filethename=wdfile
             objj=generatesumm()
+            #创建方法
             ww=objj.generate_summary(filethename,3)
             conclusion.append(ww)
-        print("conclusion\n",conclusion)
-        print("conclusion\n",".".join(conclusion))
+        #    print(conclusion)
+            for theconclusion in conclusion:
+                #将文摘句子放到新建txt里
+                outfilethename="summary"+filethename
+                #新建txt命名为"summary+源文件名字"
+                file = open(outfilethename, 'w')
+                file.write(str(theconclusion));
+                file.close()
 
-class buildfile:
-    def init_txt(self):
-        txt = comtypes.client.CreateObject("txt.Application")
-        txt.Visible = 1
-        return txt
-
-
+     #   print("conclusion\n",conclusion)
+      #  print("conclusion\n",".".join(conclusion))
 
 if __name__ == '__main__':
     #obj = generatesumm()
     obj= readfile()
-    obj.readthefile("D:\python project me\TG")
+  #  obj.readthefile("D:\python project me\TG\projectartical")
+    obj.readthefile('D:\python project me\TG')
    # obj.generate_summary("msft.txt", 2)

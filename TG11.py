@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 #
-#改读文件后sentences的表达方式，去掉空行和\n
-#成功将txt转到out文件夹下的summary+name+txt
+#将glove词向量生成放到主函数里，只执行一次
+#加入rouge方法
 import nltk
 # nltk.download('stopwords')
 from nltk.corpus import stopwords
@@ -14,6 +14,10 @@ import codecs
 import comtypes
 from comtypes.client import CreateObject
 from sklearn.metrics.pairwise import cosine_similarity
+#from word_embeddings_file import word_embeddings
+from rouge import Rouge
+
+
 class generatesumm:
 
     def read_article(self,file_name,folder):
@@ -37,7 +41,7 @@ class generatesumm:
             sentencess.append(sentence.replace("[^a-zA-Z]", " ").split(" "))
         sentencess.pop()
 
-        return sentencess
+        return sentencess,filedataa
 
     def remove_stopwords(self,sen,stop_words=None):
         if stop_words is None:
@@ -46,22 +50,12 @@ class generatesumm:
             sen_new = " ".join([i for i in sen if i not in stop_words])
         return sen_new
 
-    def sentence_vectors(self,sentences, stopwords=None):
+    def sentence_vectors(self,sentences, word_embeddings, stopwords=None ):
         if stopwords is None:
            stopwords = []
        # clean_sentences=[self.remove_stopwords(r.split(),stopwords) for r in sentences]
         clean_sentences = [self.remove_stopwords(r,stopwords) for r in sentences]
-        word_embeddings = {}   #词向量
-        f = open('glove.42B.300d.txt', encoding='utf-8')
-        for line in f:
-            values = line.split()
-            word = values[0]
-            coefs = np.asanyarray(values[1:], dtype='float32')
-            try:
-                word_embeddings[word] = coefs
-            except Exception:
-                word_embeddings[word] = np.random.uniform(0, 1, 300)
-        f.close()
+
 
         sentence_vectors = []    #句子向量
         for i in sentences:
@@ -90,13 +84,13 @@ class generatesumm:
                  similarity_matrix[idx1][idx2] = cosine_similarity(sentence_vectors[idx1].reshape(1,300),sentence_vectors[idx2].reshape(1,300))[0,0]
        return similarity_matrix
 
-    def generate_summary(self, file_name, folder,stop_words,top_n=5):
+    def generate_summary(self, file_name, folder,stop_words,word_embeddings,top_n=5):
 
         summarize_text = []
 
     # Step 1 - Read text anc split it
-        sentences = self.read_article(file_name,folder)
-        sentence_vectors=self.sentence_vectors(sentences,stop_words)
+        sentences ,filedataa= self.read_article(file_name,folder)
+        sentence_vectors=self.sentence_vectors(sentences,word_embeddings,stop_words)
     # Step 2 - Generate Similary Martix across sentences
         sentence_similarity_martix = self.build_similarity_matrix(sentences, sentence_vectors,stop_words)
 
@@ -111,7 +105,7 @@ class generatesumm:
         for i in range(top_n):
             summarize_text.append(" ".join(ranked_sentence[i][1]))
         summarize_texted=". ".join(summarize_text)
-        return summarize_texted
+        return summarize_texted,filedataa
     # Step 5 - Offcourse, output the summarize texr
         #print("Summarize Text: \n", ". ".join(summarize_text))
         #print("lllaaaaaa\n",summarize_text)
@@ -124,7 +118,7 @@ class readfile:
         txt.Visible = 1
         return txt
 
-    def readthefile(self, folder):
+    def readthefile(self, folder,word_embeddings):
         # 获取指定目录下面的所有文件
         nltk.download("stopwords")
         stop_words = stopwords.words('english')
@@ -138,9 +132,25 @@ class readfile:
             filethename=wdfile
             objj=generatesumm()
             #创建方法
-            ww=objj.generate_summary(filethename,folder,stop_words,3)
+            ww,filedataa=objj.generate_summary(filethename,folder,stop_words,word_embeddings,3)
             conclusion.append(ww)
-        #    print(conclusion)
+
+            a = conclusion  # 预测摘要 （可以是列表也可以是句子）
+            c=filedataa[0]
+            b = [c]  # 真实摘要
+            #print(a)
+           # print(b)
+            print(filethename)
+            '''
+            f:F1值  p：查准率  R：召回率
+            '''
+            rouge = Rouge()
+            rouge_score = rouge.get_scores(a, b)
+           # print(filethename+" "+"rouge:")
+            print(rouge_score[0]["rouge-1"])
+            print(rouge_score[0]["rouge-2"])
+            print(rouge_score[0]["rouge-l"])
+            print("-----------------------------------------")
             for theconclusion in conclusion:
                 #将文摘句子放到新建txt里
                 outfilethename="summary"+filethename
@@ -149,14 +159,23 @@ class readfile:
                 file.write(str(theconclusion));
                 file.close()
 
-     #   print("conclusion\n",conclusion)
-      #  print("conclusion\n",".".join(conclusion))
+
 
 if __name__ == '__main__':
-    #obj = generatesumm()
+    word_embeddings = {}  # 词向量
+    f = open('glove.42B.300d.txt', encoding='utf-8')
+    for line in f:
+        values = line.split()
+        word = values[0]
+        coefs = np.asanyarray(values[1:], dtype='float32')
+        try:
+            word_embeddings[word] = coefs
+        except Exception:
+            word_embeddings[word] = np.random.uniform(0, 1, 300)
+    f.close()
+    #word_embeddings=word_embeddings()
+    print("www")
     obj= readfile()
-  #  obj.readthefile("D:\python project me\TG\projectartical")
-    #obj.readthefile('D:\python project me\TG')
-    obj.readthefile('D:\python project me\mtext\mbusiness')
+    obj.readthefile('D:\python project me\mtext\kos',word_embeddings)
     #输出是D:\python project me\mtext\mbusiness\out文件夹下
-   # obj.generate_summary("msft.txt", 2)
+

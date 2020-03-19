@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 #
-#将glove词向量生成放到主函数里，只执行一次
-#加入rouge方法
+#中文词向量
 import nltk
 # nltk.download('stopwords')
 from nltk.corpus import stopwords
@@ -16,32 +15,56 @@ from comtypes.client import CreateObject
 from sklearn.metrics.pairwise import cosine_similarity
 #from word_embeddings_file import word_embeddings
 from rouge import Rouge
+from itertools import chain
+import gensim
 
+from gensim.models import KeyedVectors
+import numpy as np
+import re,os,jieba
 
 class generatesumm:
 
     def read_article(self,file_name,folder):
         sentences = []  #存放去掉空行和\n的句子
         with open(folder+"\\"+file_name, 'r',encoding='UTF-8') as f1:
-            for ip in f1.readlines():
-                if ip != None:
-                    sentences.append(ip.strip("\n"))   #去掉句子结尾的\n
+            for line in f1.readlines():
+               # if line != None:
+               #     sentences.append(line.strip("\n"))   #去掉句子结尾的\n
+                    if line.strip():
+                        # 把元素按照[。！；？]进行分隔，得到句子。
+                        line_split = re.split(r'[。！；？]', line.strip())
+                        # [。！；？]这些符号也会划分出来，把它们去掉。
+                        line_split = [line.strip() for line in line_split if
+                                      line.strip() not in ['。', '！', '？', '；'] and len(line.strip()) > 1]
+                        sentences.append(line_split)
+            sentences_list= list(chain.from_iterable(sentences))
+        sentences_lists=[]
         f1.close()
-        sentences = [i for i in sentences if (len(str(i)) != 0)]    #去掉空的句子
+        for sentence in sentences_list:
+            sentences_de=self.de_nonchinese(sentence)
+            sentences_lists.append(sentences_de)
+        sentences_lists = [i for i in sentences_lists if (len(str(i)) != 0)]    #去掉空的句子
+        #sentences = re.sub(r'[^\u4e00-\u9fa5]+', '', sentences)  #去掉非汉字
 
-        filedataa = []   #存放每个用逗号隔开的句子
-        for i in range(len(sentences)):
-            filedataa += sentences[i].split(",")
-      #  filedataa.remove('\n')
-        sentencess = [] #存放统一小写的句子
+        sentence_word_list = []
+        for sentence in sentences_lists:
+            line_seg = self.seg_depart(sentence)
+            sentence_word_list.append(line_seg)
+       # print((sentence_word_list))
+        return sentence_word_list,sentences_lists
+    def de_nonchinese(self,sentence):
+        # 去掉非汉字字符
+        sentence = re.sub(r'[^\u4e00-\u9fa5]+','',sentence)
+        return  sentence
 
-        for sentence in filedataa:
-          #  print(sentence)
-            #sentences.append(sentence.replace(str.encode('[^a-zA-Z]'), str.encode(' ')).split(str.encode(' ')))
-            sentencess.append(sentence.replace("[^a-zA-Z]", " ").split(" "))
-        sentencess.pop()
+    def seg_depart(self,sentence):
+        # 分词
+       # sentence = re.sub(r'[^\u4e00-\u9fa5]+','',sentence)
 
-        return sentencess,filedataa
+        sentence_depart = [word for word in jieba.cut(sentence.strip())]
+        return sentence_depart
+
+
 
     def remove_stopwords(self,sen,stop_words=None):
         if stop_words is None:
@@ -58,14 +81,14 @@ class generatesumm:
 
 
         sentence_vectors = []    #句子向量
-        for i in sentences:
+        for i in clean_sentences:
             if len(i) != 0:
                 #v = sum([word_embeddings.get(w, np.zeros((1,))) for w in i.split()]) / (len(i.split()) + 0.001)
                # v = sum([word_embeddings.get(w, np.zeros((1,))) for w in i]) / (len(i) + 0.001)
                 v = sum([word_embeddings.get(w, np.random.uniform(0, 1, 300)) for w in i]) / (len(i) + 0.001)
             else:
               #  v = np.zeros((30,))
-                v = np.zeros((1,))
+                v = np.random.uniform(0, 1, 300)
             sentence_vectors.append(v)
 
         return sentence_vectors
@@ -99,12 +122,12 @@ class generatesumm:
         scores = nx.pagerank(sentence_similarity_graph)
 
     # Step 4 - Sort the rank and pick top sentences
-        ranked_sentence = sorted(((scores[i], s) for i, s in enumerate(sentences)), reverse=True)
+        ranked_sentence = sorted(((scores[i], s) for i, s in enumerate(filedataa)), reverse=True)
        # print("Indexes of top ranked_sentence order are ", ranked_sentence)
 
         for i in range(top_n):
-            summarize_text.append(" ".join(ranked_sentence[i][1]))
-        summarize_texted=". ".join(summarize_text)
+            summarize_text.append("".join(ranked_sentence[i][1]))
+        summarize_texted="。 ".join(summarize_text)
         return summarize_texted,filedataa
     # Step 5 - Offcourse, output the summarize texr
         #print("Summarize Text: \n", ". ".join(summarize_text))
@@ -120,8 +143,10 @@ class readfile:
 
     def readthefile(self, folder,word_embeddings):
         # 获取指定目录下面的所有文件
-        nltk.download("stopwords")
-        stop_words = stopwords.words('english')
+        #nltk.download("stopwords")
+        #stop_words = stopwords.words('english')
+       # stop_words = stopwords.words('zh')
+        stop_words = [line.strip() for line in open('./stopwords.txt', encoding='UTF-8').readlines()]
         files = os.listdir(folder)
         # 获取word类型的文件放到一个列表里面
         wdfiles = [f for f in files if f.endswith((".doc", ".docx","txt","xml"))]
@@ -135,11 +160,11 @@ class readfile:
             filethename=wdfile
             objj=generatesumm()
             #创建方法
-            ww,filedataa=objj.generate_summary(filethename,folder,stop_words,word_embeddings,3)
+            ww,line_split=objj.generate_summary(filethename,folder,stop_words,word_embeddings,3)
             conclusion.append(ww)
 
             a = conclusion  # 预测摘要 （可以是列表也可以是句子）
-            c=filedataa[0]
+            c= line_split[0]
             b = [c]  # 真实摘要
             #print(a)
            # print(b)
@@ -182,20 +207,21 @@ class readfile:
 
 
 if __name__ == '__main__':
-    word_embeddings = {}  # 词向量
-    f = open('D:\python project me\glove.42B.300d\glove.42B.300d.txt', encoding='utf-8')
+    word_embeddings = {}
+    f = open('D:\python project me\sgns.financial.char\sgns.financial.char', encoding='utf-8')
     for line in f:
-        values = line.split()
-        word = values[0]
-        coefs = np.asanyarray(values[1:], dtype='float32')
-        try:
-            word_embeddings[word] = coefs
-        except Exception:
-            word_embeddings[word] = np.random.uniform(0, 1, 300)
+        # 把第一行的内容去掉
+        if '467389 300\n' not in line:
+            values = line.split()
+            # 第一个元素是词语
+            word = values[0]
+            embedding = np.asarray(values[1:], dtype='float32')
+            word_embeddings[word] = embedding
     f.close()
+    print("一共有" + str(len(word_embeddings)) + "个词语/字。")
     #word_embeddings=word_embeddings()
     print("www")
     obj= readfile()
-    obj.readthefile('D:\python project me\mtext\kos',word_embeddings)
+    obj.readthefile('D:\python project me\mtext\koq',word_embeddings)
     #输出是D:\python project me\mtext\mbusiness\out文件夹下
 
